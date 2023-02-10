@@ -44,30 +44,33 @@ insert into purchase_history values
 # Input should be like this
 ``
 
-![image](https://user-images.githubusercontent.com/120908587/217746613-ad8aabe9-b4cb-4cc6-b482-d907172b01a0.png)
-
-
+![image](https://user-images.githubusercontent.com/120908587/217745647-f4bdb17e-f3b4-4cac-a29b-cb033a852506.png)
 
 
 ```sql 
--- lead 
-select id, count(1) as total_rides,
-sum(case when end_loc = next_strt_loc then 1 else 0 end) as profit_rides from
-(select * ,
-lead(start_loc, 1) over( partition by id order by start_time) as next_strt_loc from drivers) a 
-group by id 
+with cte as 
+(select userid, count(distinct purchasedate) as dates_purchsed_by,count( productid) as product_purchased,
+count(distinct productid) as distinct_product_purchased from purchase_history
+group by userid)
+
+select userid from cte where  dates_purchsed_by  > 1 and product_purchased = distinct_product_purchased
 ```
 
 
 * Another Solution
 
 ```sql 
+with cte1 as
+(select a.* from purchase_history as a left join
+(select userid , productid , count(1) as product_count from purchase_history group by userid , productid having count(1) > 1)
+as b on a.userid = b.userid where b.userid is null) 
 
-with rides as 
-(select *, ROW_NUMBER() over(partition by id order by start_time asc) as rn from drivers)
-select r1.id, count(1) as total_rides , count(r2.id) as profit_rides
-from rides r1
-left join rides r2
-on r1.id= r2.id and r1.end_loc = r2.start_loc and r1.rn+1 = r2.rn
-group by r1.id
+select userid from cte1 group by userid
+having count(distinct purchasedate) > 1;
 ```
+
+
+
+
+
+
